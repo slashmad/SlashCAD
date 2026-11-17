@@ -166,6 +166,8 @@ export interface Settings {
   fitSize: number; // 0.5..1 share of the viewport used by Home/Fit
   fitOnViewChange: boolean;
   theme: "dark" | "light";
+  /** Show the Sponsor button in the title bar (hide with ×, restore under About). */
+  showSponsor: boolean;
   ambientOcclusion: boolean;
   projection: "perspective" | "orthographic";
   displayBackend: "auto" | "wayland" | "x11";

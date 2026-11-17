@@ -8,7 +8,14 @@
   A local CAD workbench where AI coding agents build your 3D models while you watch, steer and measure.
 </p>
 
----
+<p align="center">
+  <a href="https://github.com/slashmad/slashcad/releases/latest">Download</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="https://github.com/slashmad/slashcad/issues">Report a problem</a>
+</p>
+
+![Verify and package](https://github.com/slashmad/slashcad/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 SlashCAD is a desktop app (Linux, Windows; macOS builds via CI) that puts a live CAD view between
 you and an AI agent. You describe a part in plain language ("a 120 mm mounting bracket with four
@@ -123,9 +130,10 @@ Claude* / *Log in with ChatGPT* opens the provider's own login page.
 
 ## Quick start
 
-1. Start SlashCAD and choose **Open folder…** (a project) or **Open file…** (a single STEP, `.py`,
-   `.brep` or `.sc` file).
-2. In a new folder, ask the agent for something, for example: *"Create main.py with a 60×40×6 mm plate
+1. Start SlashCAD and choose **New project…** (a new folder with an empty `main.py`, by default under
+   `SlashCAD Projects` in your home folder), **Open folder…** (an existing project) or **Open file…**
+   (a single STEP, `.py`, `.brep` or `.sc` file).
+2. In the new project, ask the agent for something, for example: *"In main.py, make a 60×40×6 mm plate
    with 4 mm corner fillets and four Ø3.4 holes 5 mm from the edges."*
 3. Watch the part appear. Orbit with the right mouse button, pan with the middle button, zoom with
    the wheel.
@@ -318,7 +326,10 @@ npm run dist:win                                 # NSIS installer, portable exe,
 ```
 
 `npm test` runs the regression tests: the design checks on synthetic geometry (`test:checks`) and the
-main-process safety rules (`test:main`: rules files, subscription login, project trust).
+main-process safety rules (`test:main`: rules files, subscription login, project trust, new projects).
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs the type check and `test:main` on every
+push and pull request, `test:checks` on Linux, and builds the Linux, Windows and macOS packages.
 
 `npm run icon` copies the icon set from `build/SlashCAD-transparent-icons` to the places the build
 uses. `npm run notices` regenerates `THIRD-PARTY-NOTICES.md` after dependency changes.
@@ -346,7 +357,8 @@ are not bundled and are subject to their own terms.
 
 ## Support
 
-Like SlashCAD? Buy me a beer 🍺
+If SlashCAD is useful to you, you can support its development:
 
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/slashmad)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-buy%20me%20a%20beer-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/slashmad)
 [![Liberapay](https://img.shields.io/badge/Liberapay-donate-F6C915?logo=liberapay&logoColor=black)](https://liberapay.com/slashmad/)

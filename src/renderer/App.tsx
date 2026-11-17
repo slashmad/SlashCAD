@@ -6,8 +6,10 @@ import { api } from "./api";
 import { LangContext, translate } from "./i18n";
 import { AgentPanel } from "./components/AgentPanel";
 import { LeftPanel } from "./components/LeftPanel";
+import { NewProjectDialog } from "./components/NewProjectDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { SourceDrawer } from "./components/SourceDrawer";
+import { TitleBar } from "./components/TitleBar";
 import { ViewerPane } from "./components/ViewerPane";
 import { parseSmsh, type ParsedMesh } from "./viewer/smsh";
 import { Viewer, type Selection } from "./viewer/Viewer";
@@ -54,6 +56,7 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [chip, setChip] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNew, setShowNew] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [activeAnn, setActiveAnn] = useState<string | null>(null);
   const [params, setParams] = useState<Param[]>([]);
@@ -298,16 +301,26 @@ export function App() {
 
   if (!appInfo) return <div className="boot">{tr("app.starting")}</div>;
 
+  const titleBar = (
+    <TitleBar appName="SlashCAD" platform={appInfo.platform} version={appInfo.version}
+      projectName={info && tree ? info.name : null} projectPath={info?.dir ?? null}
+      showSponsor={settings?.showSponsor !== false}
+      onShowSponsor={(show) => { void api.setSettings({ showSponsor: show }).then(setSettings); }} />
+  );
+
   if (!info || !tree) {
     return (
+      <LangContext.Provider value={settings?.language ?? "en"}>
+      <div className="welcome-shell">
+      {titleBar}
       <div className={`welcome ${dragOver ? "drag" : ""}`} {...dropProps}>
         <img className="welcome-mark" src="./icon-256.png" alt="" />
         <h1>SlashCAD</h1>
         <p className="muted">{tr("app.tagline")}</p>
         <div className="welcome-actions">
-          <button className="primary" onClick={() => api.project.openFileDialog()}>{tr("app.openFile")}</button>
+          <button className="primary" onClick={() => setShowNew(true)}>{tr("app.newProject")}</button>
+          <button onClick={() => api.project.openFileDialog()}>{tr("app.openFile")}</button>
           <button onClick={() => api.project.openDialog()}>{tr("app.openFolder")}</button>
-          <button onClick={() => api.project.newDialog()}>{tr("app.newProject")}</button>
         </div>
         <p className="muted small">{tr("app.dropHint")}</p>
         <div>
@@ -319,15 +332,17 @@ export function App() {
           </div>
         ) : null}
       </div>
+      {showNew && <NewProjectDialog onClose={() => setShowNew(false)} />}
+      </div>
+      </LangContext.Provider>
     );
   }
 
   return (
     <LangContext.Provider value={settings?.language ?? "en"}>
     <div className={`app ${dragOver ? "drag" : ""}`} {...dropProps} style={{ gridTemplateColumns: `${leftW}px 4px 1fr 4px ${rightW}px` }}>
+      {titleBar}
       <div className="topbar">
-        <span className="brand"><img src="./icon-64.png" alt="" />SlashCAD</span>
-        <span className="proj" title={info.dir}>{info.name}</span>
         {info.singleFile && <button className="primary" title={tr("app.makeProjectTitle")} onClick={() => api.project.makeProject()}>{tr("app.makeProject")}</button>}
         <span className="menu-wrap">
           <button onClick={() => setOpenMenu(!openMenu)}>{tr("app.open")} ▾</button>
@@ -335,7 +350,7 @@ export function App() {
             <div className="menu open-menu" onMouseLeave={() => setOpenMenu(false)}>
               <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.openFileDialog(); }}>{tr("app.openFile")}</div>
               <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.openDialog(); }}>{tr("app.openFolder")}</div>
-              <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.newDialog(); }}>{tr("app.newProject")}</div>
+              <div className="menu-item" onClick={() => { setOpenMenu(false); setShowNew(true); }}>{tr("app.newProject")}</div>
             </div>
           )}
         </span>
@@ -406,6 +421,7 @@ export function App() {
         onActivateAnnotation={setActiveAnn}
         solidcraftOn={!!scInfo?.cli && settings?.solidcraftEnabled !== false}
       />
+      {showNew && <NewProjectDialog onClose={() => setShowNew(false)} />}
       {showSettings && settings && <SettingsDialog settings={settings} info={appInfo} onClose={() => setShowSettings(false)} onSaved={setSettings} />}
     </div>
     </LangContext.Provider>

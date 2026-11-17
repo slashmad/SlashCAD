@@ -23,6 +23,7 @@ const defaults: Settings = {
   fitSize: 1,
   fitOnViewChange: false,
   theme: "dark",
+  showSponsor: true,
   ambientOcclusion: true,
   solidcraftEnabled: true,
   projection: "perspective",

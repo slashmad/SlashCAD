@@ -1,0 +1,61 @@
+# Type checks, tests and installers on native runners for every push to main and every pull
+# request (public repository: standard runners are free). The packages bundle a relocatable Python
+# runtime, prepared on each runner by scripts/setup-python.mjs --bundle. The CAD-worker tests need
+# the development .venv and run on Linux.
+name: Verify and package
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, name: Linux x64, package: linux}
+          - {os: windows-2025, name: Windows x64, package: win}
+          - {os: macos-15, name: macOS arm64, package: mac}
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: runner.os == 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:main
+      - if: runner.os == 'Linux'
+        run: |
+          npm run python:setup
+          npm run test:checks
+      - run: node scripts/setup-python.mjs --bundle
+      - run: npm run dist:${{ matrix.package }}
+      # Known advisories in build-only dependencies are reported without failing the build.
+      - run: npm audit --include=dev --include=optional --audit-level=moderate
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SlashCAD-${{ runner.os }}-${{ runner.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.exe
+            release/*.zip
+            release/*.dmg

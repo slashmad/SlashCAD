@@ -1,9 +1,11 @@
 // Electron main process: window, display backend, project, CAD worker, agents, MCP hub, IPC.
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { arch as osArch, release as osRelease } from "node:os";
 import type { AgentEvent, AgentKind, PermissionDecision, PosePreview, SnapshotRequest } from "../shared/types";
 import { AgentSession } from "./agents/base";
+import { linkFor } from "./app-links";
 import { claudeAuthStatus, claudeLogin, codexAuthStatus, codexLogin, writeLoginInput, type AuthStatus } from "./agents/auth";
 import { subscriptionVerdict } from "./agents/billing";
 import { pickBinary } from "./agents/binaries";
@@ -18,6 +20,7 @@ import { integrateDesktop } from "./desktopIntegration";
 import { downloadReference } from "./download";
 import { History, type Op } from "./history";
 import { McpHub } from "./mcpHub";
+import { createCadProject, freeProjectName, projectNameValid } from "./newProject";
 import { CAD_EXT, isCadScript, Project, type ProjectOptions } from "./project";
 import { getSettings, rememberProject, setSettings } from "./settings";
 import { readParams, writeParam } from "./params";
@@ -317,13 +320,6 @@ function setPreview(p: PosePreview | null) {
   return builder.request(p ? `preview ${p.param}=${p.value}` : "preview cleared");
 }
 
-function createProject(dir: string): void {
-  mkdirSync(dir, { recursive: true });
-  const main = join(dir, "main.py");
-  if (!existsSync(main)) copyFileSync(resourcePath("examples", "demo", "main.py"), main);
-  void openPath(dir, { trusted: true });
-}
-
 /** Single-file mode: keep agents out of the surrounding folder (often Downloads or home). */
 function singleFileInstructions(p: Project): string {
   return `
@@ -427,8 +423,13 @@ async function startAgent(kind: AgentKind, resumeId?: string): Promise<{ ok: boo
 
 // ---------------------------------------------------------------- window
 function createWindow(): void {
+  // The renderer draws the title bar (components/TitleBar.tsx). Windows/Linux keep the native window
+  // controls as an overlay in the chrome colour; macOS keeps its traffic lights.
+  const titleBar = process.platform === "darwin"
+    ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 12, y: 11 } }
+    : { titleBarStyle: "hidden" as const, titleBarOverlay: { color: "#111318", symbolColor: "#c4cad4", height: 36 } };
   win = new BrowserWindow({
-    width: 1680, height: 1020, minWidth: 1000, minHeight: 640, backgroundColor: "#16181d", show: false,
+    width: 1680, height: 1020, ...titleBar, minWidth: 1000, minHeight: 640, backgroundColor: "#16181d", show: false,
     title: "SlashCAD",
     icon: join(__dirname, "..", "renderer", "icon-256.png"), // Linux/Windows window icon (packages also set it)
     webPreferences: {
@@ -456,6 +457,14 @@ function registerIpc(): void {
     claude: pickBinary("claude", getSettings().claudePath), codex: pickBinary("codex", getSettings().codexPath),
     solidcraft: solidcraftInfo(),
   }));
+  // Title-bar links: the renderer names a key, app-links.ts maps it to a fixed URL.
+  ipcMain.handle("app:openLink", async (e, key: unknown) => {
+    if (!win || e.sender !== win.webContents) return false;
+    const url = linkFor(key, { version: app.getVersion(), platform: process.platform, arch: osArch(), osRelease: osRelease(), electron: process.versions.electron });
+    if (!url) return false;
+    await shell.openExternal(url);
+    return true;
+  });
   ipcMain.handle("settings:set", (_e, patch) => {
     const r = setSettings(patch);
     if ("solidcraftCliPath" in patch || "solidcraftAppPath" in patch) solidcraftInfo(true);
@@ -471,11 +480,29 @@ function registerIpc(): void {
     await openPath(r.filePaths[0]);
     return true;
   });
-  ipcMain.handle("project:newDialog", async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ["openDirectory", "createDirectory"], title: "Choose or create an empty folder for a new project" });
-    if (r.canceled || !r.filePaths[0]) return false;
-    createProject(r.filePaths[0]);
-    return true;
+  // New project: the renderer's dialog picks a name and a parent folder; main validates and creates.
+  const projectsHome = () => join(app.getPath("home"), "SlashCAD Projects");
+  ipcMain.handle("project:newDefaults", (_e, base: unknown) => {
+    const parent = projectsHome();
+    return { parent, name: freeProjectName(parent, typeof base === "string" && projectNameValid(base) ? base : "New project") };
+  });
+  ipcMain.handle("project:chooseFolder", async (_e, current: unknown) => {
+    const r = await dialog.showOpenDialog(win!, {
+      title: "Where to create the project", buttonLabel: "Choose", defaultPath: typeof current === "string" && isAbsolute(current) ? current : projectsHome(),
+      properties: ["openDirectory", "createDirectory", "promptToCreate"],
+    });
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+  });
+  ipcMain.handle("project:create", async (_e, name: unknown, parent: unknown) => {
+    if (typeof name !== "string" || typeof parent !== "string") return { ok: false, error: "name" };
+    try {
+      const r = createCadProject(parent, name);
+      if ("error" in r) return { ok: false, error: r.error };
+      await openPath(r.dir, { trusted: true });
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: "io", detail: String(e?.message ?? e) };
+    }
   });
   ipcMain.handle("project:open", async (_e, path: string) => { if (existsSync(path)) { await openPath(path); return true; } return false; });
   ipcMain.handle("project:openFileDialog", async () => {

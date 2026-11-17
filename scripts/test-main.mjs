@@ -18,7 +18,7 @@ const check = (name, ok, detail = "") => {
 
 try {
   await build({
-    stdin: { contents: "export * from './src/main/design'; export * from './src/main/agents/billing'; export * from './src/main/project';", resolveDir: repo, loader: "ts" },
+    stdin: { contents: "export * from './src/main/design'; export * from './src/main/agents/billing'; export * from './src/main/project'; export * from './src/main/newProject';", resolveDir: repo, loader: "ts" },
     outfile: join(scratch, "m.cjs"), bundle: true, platform: "node", format: "cjs", logLevel: "error",
     plugins: [{ name: "mock-electron", setup(b) {
       b.onResolve({ filter: /^electron$/ }, () => ({ path: "electron", namespace: "mock" }));
@@ -76,6 +76,16 @@ try {
   check("C08 the user's decision is remembered by the app", again.info.trusted === true);
   check("C08 the decision is not written into the project", !JSON.stringify(JSON.parse(readFileSync(join(supplied, ".slashcad", "project.json"), "utf8"))).includes("trusted"));
   again.dispose();
+
+  // ---- N01: a new project has a starter main.py without geometry and never reuses a non-empty folder
+  const bad = ["", " x", "x ", ".x", "x.", "a/b", "a\\b", "a:b", 'a"b', "a?", "con", "COM1", "x".repeat(65)];
+  check("N01 non-portable project names are refused", bad.every((n) => !m.projectNameValid(n)));
+  const parent = join(scratch, "new");
+  const made = m.createCadProject(parent, "Ny låda 1");
+  check("N01 a new project gets main.py", !!made.dir && readFileSync(join(made.dir, "main.py"), "utf8").includes("from slashcad import show"), JSON.stringify(made));
+  check("N01 a non-empty folder is refused", m.createCadProject(parent, "Ny låda 1").error === "exists");
+  check("N01 a relative location is refused", m.createCadProject("relative", "x").error === "parent");
+  check("N01 the next free name is suggested", m.freeProjectName(parent, "Ny låda 1") === "Ny låda 1 2");
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
