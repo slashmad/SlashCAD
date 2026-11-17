@@ -19,6 +19,7 @@
     "dist:win": "npm run build && electron-builder --win nsis portable zip --publish never",
     "dist:mac": "npm run build && electron-builder --mac dmg zip --publish never",
     "notices": "node scripts/third-party-notices.mjs",
+    "test:spawn": "node scripts/test-spawn.mjs",
     "icon": "node scripts/sync-icons.mjs",
     "test:checks": ".venv/bin/python -I scripts/test-checks.py",
     "test:main": "node scripts/test-main.mjs",
