@@ -33,11 +33,12 @@ the agents' own traffic to their providers.
 *The example box in `examples/slide-box`. Left: the project's design rules, all passing. Centre:
 the lid is previewed half open (`SLIDE = 45`) without changing the file. Right: the agent chat.*
 
-> **Status:** early development (0.5.2). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
+> **Status:** early development (0.6.0). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
 > Code. ChatGPT (Codex) runs real turns in the app. Its approval of SlashCAD's CAD tools was fixed in
 > 0.4 and has not yet been checked in a live session. The design checks of 0.5 are tested in the app
 > and through the MCP tools, but not yet in a real agent session. The Windows installer works; the portable exe
-> fix from 0.3.0-fix awaits confirmation, and the macOS build exists only as an untested CI job.
+> fix from 0.3.0-fix awaits confirmation. macOS packages are built by CI on every change but have not been
+> tried on a Mac; they are unsigned and not notarized.
 
 ## What it is for
 
@@ -115,6 +116,10 @@ Download a package from the [Releases](../../releases) page:
 | Windows | `SlashCAD-Setup-<version>.exe` | Installer (per user, choice of folder). |
 | Windows | `SlashCAD-Portable-<version>.exe` | Single exe; keeps its settings in `SlashCAD-data` next to it. |
 | Windows | `SlashCAD-<version>-win-x64.zip` | Unzip and run `slashcad.exe`; starts faster than the portable exe. |
+| macOS (Apple silicon) | `SlashCAD-<version>-mac-arm64.dmg` / `.zip` | Unsigned and not notarized: right-click the app › *Open* the first time. Not yet tried on a Mac. |
+
+`SHA256SUMS.txt` on the release page lists a checksum for every file. The packages are built by the GitHub Actions workflow on
+Linux, Windows and macOS runners.
 
 The packages include their own Python and CAD kernel. You only need at least one agent CLI,
 installed and logged in:
