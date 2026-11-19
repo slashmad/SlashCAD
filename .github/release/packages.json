@@ -1,0 +1,16 @@
+{
+  "SlashCAD-Linux-X64": {
+    "SlashCAD-VERSION-x86_64.AppImage": "publish",
+    "slashcad_VERSION_amd64.deb": "publish",
+    "slashcad-VERSION.x86_64.rpm": "publish"
+  },
+  "SlashCAD-Windows-X64": {
+    "SlashCAD-Setup-VERSION.exe": "publish",
+    "SlashCAD-Portable-VERSION.exe": "publish",
+    "SlashCAD-VERSION-win-x64.zip": "publish"
+  },
+  "SlashCAD-macOS-ARM64": {
+    "SlashCAD-VERSION-mac-arm64.dmg": "publish",
+    "SlashCAD-VERSION-mac-arm64.zip": "publish"
+  }
+}
