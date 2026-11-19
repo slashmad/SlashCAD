@@ -148,20 +148,20 @@ def _compound(faces):
     return c
 
 
-def _inside(sa, sb) -> bool:
-    """True when a vertex of sa lies inside solid sb (catches a part fully buried in another)."""
+def _contains_solid(inner_solids, outer_solids) -> bool:
+    """With disjoint surfaces, a vertex classifies its whole connected solid."""
     from OCP.BRepClass3d import BRepClass3d_SolidClassifier
-    from OCP.gp import gp_Pnt
     from OCP.TopAbs import TopAbs_IN
+    from OCP.gp import gp_Pnt
 
-    vs = sa.vertices()
-    if not vs or not sb.solids():
-        return False
-    v = vs[0]
-    for solid in sb.solids():
-        cl = BRepClass3d_SolidClassifier(solid.wrapped, gp_Pnt(v.X, v.Y, v.Z), 1e-6)
-        if cl.State() == TopAbs_IN:
-            return True
+    for solid, (lo, hi) in inner_solids:
+        for outer, (outer_lo, outer_hi) in outer_solids:
+            if np.any(lo < outer_lo - 1e-6) or np.any(hi > outer_hi + 1e-6):
+                continue
+            vertex = solid.vertices()[0]
+            classifier = BRepClass3d_SolidClassifier(outer.wrapped, gp_Pnt(vertex.X, vertex.Y, vertex.Z), 1e-6)
+            if classifier.State() == TopAbs_IN:
+                return True
     return False
 
 
@@ -190,11 +190,12 @@ def pair_metrics(sa, sb, near: float = 0.5) -> dict:
     else:
         # No surfaces meet: still interfering if one part sits wholly inside the other.
         ba, bb = _box(sa), _box(sb)
-        a_in_b = bool(np.all(ba[0] >= bb[0]) and np.all(ba[1] <= bb[1]))
-        b_in_a = bool(np.all(bb[0] >= ba[0]) and np.all(bb[1] <= ba[1]))
-        if (a_in_b and _inside(sa, sb)) or (b_in_a and _inside(sb, sa)):
-            d = 0.0
-            vol = overlap_volume(sa, sb)
+        if _box_gap(ba, bb) == 0:
+            a_solids = [(s, _box(s)) for s in sa.solids()]
+            b_solids = [(s, _box(s)) for s in sb.solids()]
+            if _contains_solid(a_solids, b_solids) or _contains_solid(b_solids, a_solids):
+                d = 0.0
+                vol = overlap_volume(sa, sb)
     return {"distance": round(d, 5), "overlap_mm3": None if vol is None else round(vol, 5)}
 
 

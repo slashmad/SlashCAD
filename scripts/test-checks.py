@@ -118,6 +118,47 @@ with tempfile.TemporaryDirectory(prefix="slashcad-test-") as td:
     out = w.cmd_export(7, {"format": "step", "path": str(root / "explicit.step"), "allow_stale": True})
     case("explicit stale export is labelled", out.get("stale_sources") == ["main.py"], out)
 
+with tempfile.TemporaryDirectory(prefix="slashcad-assembly-") as td:
+    root = Path(td)
+    w = Worker(lambda m: None)
+    params = {"project_dir": td, "cache_dir": str(root / "cache"), "sources": ["body.py", "lid.py"]}
+    (root / "body.py").write_text(
+        'from build123d import Box, Compound, Pos\nfrom slashcad import show\n'
+        'show(Compound([Pos(10,0,0)*Box(1,1,1), Box(1,1,1)]), name="bracket")\n'
+        'show(Box(4,4,4), name="bracket")\n'
+        'show(Pos(20,0,0)*Box(1,1,1), name="bracket#2")\n')
+    (root / "lid.py").write_text('raise ValueError("initial build error")')
+    built = w.cmd_build(1, params)
+    ids = [p["id"] for p in built["parts"]]
+    case("duplicate display names preserve distinct and legacy IDs",
+         ids == ["body.py#bracket#3", "body.py#bracket", "body.py#bracket#2"], ids)
+    partial = w.cmd_check_design(2, {"ids": ids})
+    case("selected compound has a buried 1 mm³ solid", partial["results"][0]["status"] == "fail"
+         and partial["pairs"][0]["overlap_mm3"] == 1, partial)
+    free = w.cmd_check_design(2, {"ids": ids[1:]})
+    case("separated bodies remain clear", free["results"][0]["status"] == "pass")
+    step = root / "assembly.step"
+    for label, call in [("check", lambda: w.cmd_check_design(3, {})),
+                        ("export", lambda: w.cmd_export(3, {"path": str(step)})),
+                        ("explicit stale export", lambda: w.cmd_export(3, {"path": str(step), "allow_stale": True}))]:
+        try:
+            call()
+            case("failed first build blocks whole " + label, False)
+        except RuntimeError as e:
+            case("failed first build identifies lid.py for " + label, "lid.py" in str(e) and not step.exists())
+    w.cmd_export(4, {"path": str(step), "ids": ids})
+    case("selected duplicate names survive STEP round trip", len(bd.import_step(step).solids()) == 4)
+    (root / "lid.py").write_text('from build123d import Box, Pos\nresult = Pos(30,0,0)*Box(1,1,1)\n')
+    w.cmd_build(5, params)
+    w.cmd_export(6, {"path": str(step)})
+    case("whole STEP recovers after lid is fixed", len(bd.import_step(step).solids()) == 5)
+
+    (root / "body.py").write_text('from build123d import Box\nfrom slashcad import show\ns = Box(1,1,1)\n'
+                                  'show(s, name="copy")\nshow(s, name="copy")\n')
+    w.cmd_build(7, {**params, "sources": ["body.py"]})
+    w.cmd_export(8, {"path": str(step)})
+    case("two occurrences of the same shape survive STEP round trip", len(bd.import_step(step).solids()) == 2)
+
 # 8. The G-code reader does not count retraction priming as extrusion.
 with tempfile.NamedTemporaryFile("w", suffix=".gcode", delete=False) as f:
     f.write("M83\n;TYPE:Perimeter\nG1 X1 E1\nG1 E-0.8\n;TYPE:Support material\nG1 E0.8\nG1 X2 E0.5\n")

@@ -111,9 +111,14 @@ class Worker:
         self.placements = p.get("placements") or {}
         return {"placed": len(self.placements)}
 
-    def _fresh(self, parts, what: str, allow_stale: bool = False) -> None:
+    def _fresh(self, parts, what: str, allow_stale: bool = False, required_sources=()) -> None:
         """Refuse to check or export the last good geometry of a source whose build failed."""
-        stale = sorted({pt.source for pt in parts if pt.source in self.stale_sources})
+        represented = {pt.source for pt in parts}
+        missing = self.stale_sources.intersection(required_sources) - represented
+        if missing:
+            raise RuntimeError(f"{', '.join(sorted(missing))}: build failed with no previous geometry. "
+                               f"Fix the source or select individual valid parts for {what}.")
+        stale = sorted(self.stale_sources & represented)
         if stale and not allow_stale:
             raise RuntimeError(f"{', '.join(stale)} has a build error, so its parts are the last good geometry, not the current file. "
                                f"Fix the error first; {what} would otherwise describe old geometry.")
@@ -208,13 +213,15 @@ class Worker:
 
     def cmd_export(self, rid, p):
         parts = self._select(p.get("ids"))
-        self._fresh(parts, "the export", bool(p.get("allow_stale")))
+        self._fresh(parts, "the export", bool(p.get("allow_stale")), self.stale_sources if not p.get("ids") else ())
         fmt = p.get("format", "step").lower()
         path = p["path"]
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         shapes = []
         for part in parts:
-            s = self._shape(part)
+            # A script can show the same shape object twice. Each export occurrence
+            # needs its own assembly node for its label, colour and STEP placement.
+            s = self._shape(part).moved(bd.Location())
             s.label = part.name
             if part.color:
                 s.color = bd.Color(*part.color)
@@ -250,7 +257,7 @@ class Worker:
     def cmd_check_design(self, rid, p):
         ids = p.get("ids")
         parts = self._select(ids) if ids else list(self.parts.values())
-        self._fresh(parts, "the check")
+        self._fresh(parts, "the check", required_sources=self.stale_sources if not ids else ())
         deadline = time.monotonic() + float(p.get("time_limit", 120))
         rep = checks.evaluate(self._items(parts), p.get("rules") or [], float(p.get("near", 0.5)), deadline)
         rep.update(self._provenance(parts))
@@ -285,7 +292,7 @@ class Worker:
         rules = p.get("rules") or []
         near = float(p.get("near", 0.5))
         static = [pt for pt in self.parts.values() if pt.source not in scripts]
-        self._fresh(static, "the sweep")
+        self._fresh(static, "the sweep", required_sources=self.stale_sources.difference(scripts) if not sel else ())
         cache: dict = {}
         poses, pair_min = [], {}
         deadline = time.monotonic() + float(p.get("time_limit", 600))
@@ -337,7 +344,7 @@ class Worker:
     def cmd_printability(self, rid, p):
         out = []
         sel = self._select(p.get("ids"))
-        self._fresh(sel, "the printability check")
+        self._fresh(sel, "the printability check", required_sources=self.stale_sources if not p.get("ids") else ())
         for part in sel:
             out.append(checks.printability(part, self._shape(part), float(p.get("overhang_deg", 45)), p.get("bed"), float(p.get("nozzle", 0.4))))
         return {"parts": out}

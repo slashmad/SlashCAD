@@ -363,6 +363,18 @@ def load_source(rel: str, project_dir: str, cache_dir: str, quality: str, progre
                                           color=c or color_tuple(lcol) or _material_color(mat), key=key, geom=geom,
                                           material=str(mat).lower() if mat else None))
                     n += 1
+            # Preserve existing IDs for unique paths, even ones that look like generated suffixes.
+            reserved = {part.id for part in res.parts}
+            occurrences = {}
+            # Older projects assigned the unsuffixed ID to the last matching body.
+            for part in reversed(res.parts):
+                original = part.id
+                number = occurrences.get(original, 0) + 1
+                if number > 1:
+                    while f"{original}#{number}" in reserved:
+                        number += 1
+                    part.id = f"{original}#{number}"
+                occurrences[original] = number
             if not res.parts:
                 # Not an error: a fresh script may only hold comments. The log tells agents why.
                 res.log = (res.log + "\nNote: the script showed no geometry (call show(obj) or set a variable named result).").strip()
@@ -373,5 +385,7 @@ def load_source(rel: str, project_dir: str, cache_dir: str, quality: str, progre
     except BaseException as e:  # noqa: BLE001 - user code may raise anything, even SystemExit
         res.error = {"message": f"{type(e).__name__}: {e}", "line": _user_frame(e.__traceback__, path),
                      "traceback": traceback.format_exc()}
+    if res.error:
+        res.parts.clear()
     res.seconds = time.perf_counter() - t0
     return res

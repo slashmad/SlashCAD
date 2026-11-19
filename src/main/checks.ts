@@ -117,7 +117,7 @@ export class DesignChecks extends EventEmitter {
           rep.summary = { ...rep.summary, fail: rep.summary.fail + 1 };
         }
       } catch (e: any) {
-        rep = { build: n, at: Date.now(), results: [], pairs: [], pair_count: 0, summary: { fail: 0, warn: 1, pass: 0 }, parts: 0, seconds: 0, error: e?.message ?? String(e) };
+        rep = { build: n, at: Date.now(), complete: false, results: [], pairs: [], pair_count: 0, summary: { fail: 0, incomplete: 1, warn: 1, pass: 0 }, parts: 0, seconds: 0, error: e?.message ?? String(e) };
       }
       if (gen !== this.gen || this.project() !== p) throw new Error("the project changed");
       this.report = rep;
