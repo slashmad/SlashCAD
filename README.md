@@ -33,7 +33,7 @@ the agents' own traffic to their providers.
 *The example box in `examples/slide-box`. Left: the project's design rules, all passing. Centre:
 the lid is previewed half open (`SLIDE = 45`) without changing the file. Right: the agent chat.*
 
-> **Status:** early development (0.6.0). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
+> **Status:** early development (0.6.1). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
 > Code. ChatGPT (Codex) runs real turns in the app. Its approval of SlashCAD's CAD tools was fixed in
 > 0.4 and has not yet been checked in a live session. The design checks of 0.5 are tested in the app
 > and through the MCP tools, but not yet in a real agent session. The Windows installer works; the portable exe
