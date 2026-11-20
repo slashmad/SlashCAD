@@ -68,6 +68,23 @@ got = {x["id"]: x for x in r["results"]}
 case("path free for 40 mm", got["free"]["status"] == "pass", got["free"]["detail"])
 case("path blocked within 60 mm, at the 53 mm gap", got["hit"]["status"] == "fail" and " 53.0" in got["hit"]["detail"], got["hit"]["detail"])
 
+r = checks.evaluate([item(slider)], [
+    {"id": "missing-obstacle", "kind": "path_clear", "part": "slider", "against": "stop", "direction": [1, 0, 0], "distance": 40},
+    {"id": "same-part", "kind": "clearance", "a": "slider", "b": "slider", "min": 0.2},
+])
+got = {x["id"]: x for x in r["results"]}
+case("free path needs a matching obstacle", got["missing-obstacle"]["status"] == "incomplete" and not r["complete"], got["missing-obstacle"])
+case("clearance needs distinct parts", got["same-part"]["status"] == "incomplete", got["same-part"])
+
+r = checks.evaluate([item(a), item(b)], [
+    {"id": "held", "kind": "retained", "part": "a", "against": "b", "within": 1},
+])
+held = r["results"][-1]
+case("initial penetration does not satisfy retention", held["status"] == "fail" and "start pose" in held["detail"], held)
+r = checks.evaluate([item(a), item(b)], [{"id": "multiple-movers", "kind": "retained", "part": "*", "against": "a", "within": 1}])
+case("a definitive failure still exposes incomplete coverage for other movers",
+     r["results"][-1]["status"] == "fail" and not r["complete"] and r["summary"]["incomplete"] == 1, r["results"][-1])
+
 tray = part("tray", bd.Box(40, 30, 6) - bd.Pos(0, 0, 2) * bd.Box(36, 26, 6))
 phone = part("phone", bd.Pos(0, 0, 1.5) * bd.Box(35.6, 25.6, 3))
 lid = part("lid", bd.Pos(0, 0, 3.25) * (bd.Box(40, 30, 0.5) - bd.Box(34, 24, 1)))
@@ -102,6 +119,12 @@ with tempfile.TemporaryDirectory(prefix="slashcad-test-") as td:
         case("oversized sweep is refused", True)
     sw = w.cmd_sweep(3, {"param": "SLIDE", "values": [0, 1, 2.5]})
     case("sweep keeps a non-divisible end value", sw["values"][-1] == 2.5 and sw["complete"], sw["values"])
+    sw = w.cmd_sweep(3, {"param": "SLIDE", "values": [0, 1], "rules": [
+        {"id": "sweep-path", "kind": "path_clear", "part": "solid", "against": "missing", "direction": [1, 0, 0], "distance": 1},
+    ]})
+    case("sweep carries incomplete rule evidence to every affected pose",
+         not sw["complete"] and sw["incomplete_poses"] == [0, 1]
+         and all(p.get("incomplete_rules", [{}])[0].get("id") == "sweep-path" for p in sw["poses"]), sw)
 
     # 7. After a failed build, checks and exports refuse the old geometry.
     (root / "main.py").write_text('raise RuntimeError("broken source")\n')

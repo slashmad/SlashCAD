@@ -25,7 +25,13 @@ export function hasRules(p: Project): boolean { return existsSync(rulesPath(p));
 
 export function readDesign(p: Project): DesignFile {
   let text: string;
-  try { text = readFileSync(rulesPath(p), "utf8"); } catch { return { version: 1, rules: [] }; } // no rules file
+  try {
+    text = readFileSync(rulesPath(p), "utf8");
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { version: 1, rules: [] };
+    const detail = error instanceof Error ? error.message : String(error);
+    return { version: 1, rules: [], error: `${RULES_FILE} could not be read (${detail}); no rules were checked`, unreadable: true };
+  }
   try {
     const j = JSON.parse(text);
     if (!j || typeof j !== "object" || Array.isArray(j)) throw new Error("the file is not a JSON object");

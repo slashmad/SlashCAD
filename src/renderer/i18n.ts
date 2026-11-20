@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
 export type Lang = "en" | "sv";
 
 const sv: Record<string, string> = {
-  "chk.incompleteRun": "OFULLSTÄNDIG: alla par kontrollerades inte",
+  "chk.incompleteRun": "OFULLSTÄNDIG: vissa regler eller par kunde inte kontrolleras",
   "chk.sampledNote": "Bara dessa lägen kontrolleras, inte rörelsen mellan dem: välj ett steg mindre än den tunnaste detalj som kan haka i.",
   "left.checks": "Kontroller",
   "chk.tabFails": "{n} underkända konstruktionskontroller",
@@ -69,7 +69,7 @@ const sv: Record<string, string> = {
   "chk.preview": "Visa läge",
   "chk.backToFile": "Tillbaka till filen",
   "chk.sweepSummary": "{n}/{total} lägen av {p} på {s} s",
-  "chk.incomplete": "(ofullständig: stoppad av tidsgränsen)",
+  "chk.incomplete": "(ofullständiga kontroller)",
   "chk.failingPoses": "Underkända lägen",
   "chk.clickPose": "Klicka för att visa läget",
   "chk.closestSweep": "Närmaste par under rörelsen",
@@ -428,7 +428,7 @@ const sv: Record<string, string> = {
 const tables: Record<Lang, Record<string, string>> = { en: {}, sv };
 
 const en: Record<string, string> = {
-  "chk.incompleteRun": "INCOMPLETE: not every pair was checked",
+  "chk.incompleteRun": "INCOMPLETE: some rules or pairs could not be checked",
   "chk.sampledNote": "Only these poses are checked, not the motion between them: use a step smaller than the thinnest feature that could catch.",
   "left.checks": "Checks",
   "chk.tabFails": "{n} failed design check(s)",
@@ -492,7 +492,7 @@ const en: Record<string, string> = {
   "chk.preview": "Show pose",
   "chk.backToFile": "Back to file",
   "chk.sweepSummary": "{n}/{total} poses of {p} in {s} s",
-  "chk.incomplete": "(incomplete: stopped by the time limit)",
+  "chk.incomplete": "(incomplete checks)",
   "chk.failingPoses": "Failing poses",
   "chk.clickPose": "Click to show this pose",
   "chk.closestSweep": "Closest pairs over the sweep",

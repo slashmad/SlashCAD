@@ -256,7 +256,7 @@ export interface DesignReport {
   pairs: PairResult[];
   pair_count: number;
   summary: { fail: number; warn: number; pass: number; incomplete?: number };
-  complete?: boolean; // false when the time limit left pairs unchecked
+  complete?: boolean; // false when any rule or pair could not be checked
   skipped_pairs?: number;
   stale_sources?: string[];
   preview?: Record<string, Record<string, number>>;
@@ -271,6 +271,7 @@ export interface SweepPose {
   interferences: number;
   worst: PairResult | null;
   rule_failures: { id: string; kind: string; detail: string }[];
+  incomplete_rules?: SweepPose["rule_failures"];
   errors: string[];
   skipped_pairs?: number;
 }

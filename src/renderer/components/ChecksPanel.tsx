@@ -222,7 +222,7 @@ function Motion(p: Props & Ctx & { sweep: SweepResult | null; design: DesignFile
       </div>
       {s && (
         <>
-          <div className={`chk-sum pad-x ${s.failing_poses.length ? "bad" : "ok"}`}>
+          <div className={`chk-sum pad-x ${s.failing_poses.length ? "bad" : !s.complete ? "warn" : "ok"}`}>
             {t("chk.sweepSummary", { n: s.poses_checked, total: s.values.length, p: s.param, s: s.seconds })}
             {!s.complete ? ` ${t("chk.incomplete")}` : ""}
           </div>
@@ -232,6 +232,11 @@ function Motion(p: Props & Ctx & { sweep: SweepResult | null; design: DesignFile
             <div key={x.value} className="chk-row fail small" onClick={() => { preview(x.value); p.show(x.worst ? [x.worst.a, x.worst.b] : undefined); }} title={t("chk.clickPose")}>
               {s.param} = {x.value}: {x.interferences ? `${x.interferences} × ${x.worst ? `${x.worst.a_name} ↔ ${x.worst.b_name}` : ""}` : ""}
               {x.rule_failures.map((f) => ` ${f.id}`).join(",")}{x.errors.length ? ` ${x.errors[0]}` : ""}
+            </div>
+          ))}
+          {s.poses.filter((x) => x.incomplete_rules?.length).slice(0, 40).map((x) => (
+            <div key={x.value} className="chk-row warn small">
+              {s.param} = {x.value}: {x.incomplete_rules?.map((r) => `${r.id}: ${r.detail}`).join("; ")}
             </div>
           ))}
           <div className="chk-sub">{t("chk.closestSweep")}</div>

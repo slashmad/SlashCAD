@@ -2,6 +2,7 @@
 // S01 rules files fail closed, S02 agents start only on a subscription login, C08 a project cannot
 // trust itself. Run from the repository root:  node scripts/test-main.mjs
 import { createRequire } from "node:module";
+import { EventEmitter } from "node:events";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -18,7 +19,7 @@ const check = (name, ok, detail = "") => {
 
 try {
   await build({
-    stdin: { contents: "export * from './src/main/design'; export * from './src/main/agents/billing'; export * from './src/main/project'; export * from './src/main/newProject';", resolveDir: repo, loader: "ts" },
+    stdin: { contents: "export * from './src/main/design'; export * from './src/main/checks'; export * from './src/main/agents/billing'; export * from './src/main/project'; export * from './src/main/newProject';", resolveDir: repo, loader: "ts" },
     outfile: join(scratch, "m.cjs"), bundle: true, platform: "node", format: "cjs", logLevel: "error",
     plugins: [{ name: "mock-electron", setup(b) {
       b.onResolve({ filter: /^electron$/ }, () => ({ path: "electron", namespace: "mock" }));
@@ -52,6 +53,27 @@ try {
   let threw = false;
   try { m.addRule(p, { kind: "clearance", a: "a", b: "b", min: 1 }); } catch { threw = true; }
   check("S01 adding a rule never rewrites a file with invalid rules", threw && readFileSync(rules, "utf8") === broken);
+
+  const attemptedSweeps = [];
+  const checks = new m.DesignChecks({ request: async (_cmd, opts) => { attemptedSweeps.push(opts); return {}; } }, new EventEmitter(), () => p);
+  const motion = { param: "STROKE", from: 0, to: 1, step: 1 };
+  let sweepError;
+  try { await checks.runSweep(motion); } catch (error) { sweepError = error; }
+  check("sweep with invalid rules fails before reaching the worker", !!sweepError && !attemptedSweeps.length);
+  await checks.runSweep({ ...motion, useRules: false });
+  check("explicit rules-off sweep still reaches the worker", attemptedSweeps.length === 1 && !attemptedSweeps[0].rules.length);
+
+  rmSync(rules);
+  await checks.runSweep(motion);
+  check("a missing optional rules file still permits a sweep", attemptedSweeps.length === 2 && !attemptedSweeps[1].rules.length);
+
+  mkdirSync(rules);
+  d = m.readDesign(p);
+  check("S01 a rules path that cannot be read is reported as an error", !!d.error && d.unreadable);
+  sweepError = undefined;
+  try { await checks.runSweep(motion); } catch (error) { sweepError = error; }
+  check("a rules read error stops the sweep before reaching the worker", !!sweepError && attemptedSweeps.length === 2);
+  rmSync(rules, { recursive: true });
 
   // ---- S02: only a subscription login may start an agent
   const v = (kind, s) => m.subscriptionVerdict(kind, s).ok;

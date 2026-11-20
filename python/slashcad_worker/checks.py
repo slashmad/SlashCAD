@@ -340,7 +340,9 @@ def travel_until_collision(shape, targets, direction, distance: float, resolutio
     for tp, ts, tb in tboxes:  # already overlapping before moving
         if _box_gap(_box(shape), tb) <= 0:
             v = overlap_volume(shape, ts)
-            if v is not None and v > VOLUME_TOL:
+            if v is None:
+                raise RuntimeError(f"could not check the start pose against {tp.name}")
+            if v > VOLUME_TOL:
                 return 0.0, tp.id, {"at_start": True, "method": "swept volume"}
     hit = _first_hit(shape, tboxes, u, distance)
     if hit is None:
@@ -396,7 +398,7 @@ def evaluate(items, rules: list, near: float = 0.5, deadline=None) -> dict:
                 A = [(p, s) for p, s, _ in items if matches(p, r.get("a"))]
                 B = [(p, s) for p, s, _ in items if matches(p, r.get("b"))]
                 if not A or not B:
-                    results.append({"id": rid, "kind": kind, "status": "warn", "detail": "no matching parts", "rule": r})
+                    results.append({"id": rid, "kind": kind, "status": "incomplete", "detail": "no matching parts", "rule": r})
                     continue
                 worst = None
                 seen = set()
@@ -412,7 +414,9 @@ def evaluate(items, rules: list, near: float = 0.5, deadline=None) -> dict:
                         score = m["distance"] - (m["overlap_mm3"] or 0)
                         if worst is None or score < worst[0]:
                             worst = (score, pa, pb, m)
-                if worst is None or worst[3]["distance"] > reach:
+                if not seen:
+                    results.append({"id": rid, "kind": kind, "status": "incomplete", "detail": "no distinct matching parts to compare", "rule": r})
+                elif worst is None or worst[3]["distance"] > reach:
                     results.append({"id": rid, "kind": kind, "status": "pass", "detail": f"all pairs are more than {reach:g} mm apart (need ≥ {need} mm)", "rule": r})
                 else:
                     _, pa, pb, m = worst
@@ -425,7 +429,7 @@ def evaluate(items, rules: list, near: float = 0.5, deadline=None) -> dict:
             elif kind == "envelope":
                 sel = [(p, s) for p, s, _ in items if matches(p, r.get("parts", "*"))]
                 if not sel:
-                    results.append({"id": rid, "kind": kind, "status": "warn", "detail": "no matching parts", "rule": r})
+                    results.append({"id": rid, "kind": kind, "status": "incomplete", "detail": "no matching parts", "rule": r})
                     continue
                 lo = np.min([_box(s)[0] for _, s in sel], axis=0)
                 hi = np.max([_box(s)[1] for _, s in sel], axis=0)
@@ -457,37 +461,44 @@ def evaluate(items, rules: list, near: float = 0.5, deadline=None) -> dict:
                 movers = [(p, s) for p, s, _ in items if matches(p, r.get("part"))]
                 targets_all = [(p, s) for p, s, _ in items if matches(p, r.get("against", "*"))]
                 if not movers:
-                    results.append({"id": rid, "kind": kind, "status": "warn", "detail": "no matching part", "rule": r})
+                    results.append({"id": rid, "kind": kind, "status": "incomplete", "detail": "no matching moving part", "rule": r})
                     continue
                 dirs = r.get("directions") or ([r["direction"]] if r.get("direction") else [[0, 0, 1]])
                 dist = float(r.get("within" if kind == "retained" else "distance", 2.0 if kind == "retained" else 10.0))
                 res = float(r.get("step", TRAVEL_TOL))
                 if not dist > 0 or not res > 0:
                     raise ValueError("distance/within and step must be positive")
-                fails, notes = [], []
+                fails, incomplete, notes = [], [], []
                 for mp, ms in movers:
                     targets = [(p, s) for p, s in targets_all if p.id != mp.id]
+                    if not targets:
+                        incomplete.append(f"{mp.name}: no distinct obstacle matches {r.get('against', '*')}")
+                        continue
                     for d in dirs:
                         dn = axis_name(d)
                         travel, hit, info = travel_until_collision(ms, targets, d, dist, res)
-                        start = " (already overlapping at the start pose)" if info.get("at_start") else ""
-                        if kind == "retained":
+                        if info.get("at_start"):
+                            fails.append(f"{mp.name} overlaps {hit.split('#')[-1]} at the start pose")
+                        elif kind == "retained":
                             if travel is None or travel > dist + 1e-9:
                                 fails.append(f"{mp.name} moves {dist} mm along {dn} without being caught")
                             else:
-                                notes.append(f"{mp.name} caught after {travel:.3f} mm along {dn} by {hit.split('#')[-1]}{start}")
+                                notes.append(f"{mp.name} caught after {travel:.3f} mm along {dn} by {hit.split('#')[-1]}")
                         else:
                             if travel is not None:
-                                fails.append(f"{mp.name} hits {hit.split('#')[-1]} after {travel:.3f} mm along {dn}{start}")
+                                fails.append(f"{mp.name} hits {hit.split('#')[-1]} after {travel:.3f} mm along {dn}")
                             else:
                                 notes.append(f"{mp.name} free for {dist} mm along {dn}")
                 method = f"swept-volume check, travel to {min(res, 0.05):g} mm"
-                results.append({"id": rid, "kind": kind, "status": "fail" if fails else "pass",
-                                "detail": ("; ".join(fails or notes)[:560] + f" [{method}]"), "parts": [p.id for p, _ in movers], "rule": r})
+                status = "fail" if fails else ("incomplete" if incomplete else "pass")
+                results.append({"id": rid, "kind": kind, "status": status,
+                                "coverage_incomplete": bool(incomplete), "detail": ("; ".join(fails + incomplete or notes)[:560] + f" [{method}]"),
+                                "parts": [p.id for p, _ in movers], "rule": r})
         except Exception as e:  # noqa: BLE001
-            results.append({"id": rid, "kind": kind, "status": "warn", "detail": f"could not evaluate: {type(e).__name__}: {e}", "rule": r})
+            results.append({"id": rid, "kind": kind, "status": "incomplete", "detail": f"could not evaluate: {type(e).__name__}: {e}", "rule": r})
     summary = {"fail": sum(r["status"] == "fail" for r in results), "warn": sum(r["status"] == "warn" for r in results),
-               "pass": sum(r["status"] == "pass" for r in results), "incomplete": sum(r["status"] == "incomplete" for r in results)}
+               "pass": sum(r["status"] == "pass" for r in results),
+               "incomplete": sum(r["status"] == "incomplete" or r.get("coverage_incomplete", False) for r in results)}
     return {"results": results, "pairs": pairs[:200], "pair_count": len(pairs), "summary": summary,
             "skipped_pairs": skipped, "complete": skipped == 0 and summary["incomplete"] == 0,
             "parts": len(items), "seconds": round(time.perf_counter() - t0, 3)}

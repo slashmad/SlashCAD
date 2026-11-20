@@ -147,9 +147,11 @@ export class DesignChecks extends EventEmitter {
     try { values = DesignChecks.sweepValues(opts.from, opts.to, opts.step); } catch (e) { return Promise.reject(e); }
     const gen = this.gen;
     return this.enqueue("sweep", async () => {
+      const design = opts.useRules === false ? null : readDesign(p);
+      if (design?.error) throw new Error(design.error);
       const res = await this.worker.request("sweep", {
         param: opts.param, values, file: opts.file ?? null, ids: opts.ids ?? null,
-        rules: opts.useRules === false ? [] : readDesign(p).rules, near: 0.5, time_limit: 900,
+        rules: design?.rules ?? [], near: 0.5, time_limit: 900,
       }, 960000);
       if (gen !== this.gen || this.project() !== p) throw new Error("the project changed");
       this.sweep = { ...res, at: Date.now() };
@@ -201,7 +203,7 @@ export function reportText(r: DesignReport | null): string {
   if (r.error) return `The design check failed: ${r.error}`;
   if (r.skipped) return r.skipped;
   const lines = [`Design check on build #${r.build}: ${r.summary.fail} failed, ${r.summary.incomplete ?? 0} incomplete, ${r.summary.warn} warnings, ${r.summary.pass} passed (${r.parts} parts, ${r.seconds} s).`];
-  if (r.complete === false) lines.push("INCOMPLETE: not every pair was checked, so a missing failure is not a pass.");
+  if (r.complete === false) lines.push("INCOMPLETE: some rules or pairs could not be checked.");
   for (const x of r.results) lines.push(`- ${x.status.toUpperCase()} ${x.id} (${x.kind}): ${x.detail}`);
   const close = r.pairs.filter((p) => p.kind !== "interference").slice(0, 12);
   if (close.length) {
@@ -214,11 +216,14 @@ export function reportText(r: DesignReport | null): string {
 
 export function sweepText(s: SweepResult): string {
   const lines = [`Sweep of ${s.param} over ${s.values[0]}…${s.values[s.values.length - 1]} (${s.poses_checked}/${s.values.length} poses, ${s.seconds} s; scripts ${(s.scripts ?? []).join(", ")}).`];
-  if (!s.complete) lines.push(`NOT COMPLETE: ${s.poses_checked}/${s.values.length} poses checked${s.incomplete_poses?.length ? `; pairs left unchecked at ${s.incomplete_poses.join(", ")}` : ""}.`);
+  if (!s.complete) lines.push(`NOT COMPLETE: ${s.poses_checked}/${s.values.length} poses attempted${s.incomplete_poses?.length ? `; unfinished checks at ${s.incomplete_poses.join(", ")}` : ""}.`);
   lines.push("Only these poses were checked; motion between them is not.");
   const bad = s.failing_poses ?? [];
-  lines.push(bad.length ? `Failing poses (interference, rule failure or build error): ${bad.join(", ")}` : "No pose has an unintended interference or rule failure.");
+  lines.push(bad.length ? `Failing poses (interference, rule failure or build error): ${bad.join(", ")}` : "No unintended interference or rule failure was found among the completed checks.");
   const poses = s.poses ?? [];
+  for (const p of poses.filter((x) => x.incomplete_rules?.length).slice(0, 15)) {
+    lines.push(`  ${s.param} = ${p.value}: ${(p.incomplete_rules ?? []).map((r) => `INCOMPLETE ${r.id}: ${r.detail}`).join("; ")}`);
+  }
   for (const p of poses.filter((x) => x.interferences || x.rule_failures?.length || x.errors?.length).slice(0, 15)) {
     const w = p.worst;
     lines.push(`  ${s.param} = ${p.value}: ${p.interferences} interference(s)${w ? `, worst ${w.a_name} ↔ ${w.b_name} ${w.overlap_mm3 ?? "?"} mm³` : ""}${(p.rule_failures ?? []).map((f) => `; ${f.id}: ${f.detail}`).join("")}${p.errors?.length ? `; errors: ${p.errors.join("; ")}` : ""}`);

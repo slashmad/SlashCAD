@@ -316,9 +316,12 @@ class Worker:
                 pairs = rep["pairs"]
                 skipped = rep["skipped_pairs"]
                 fails = [{"id": r["id"], "kind": r["kind"], "detail": r["detail"]} for r in rep["results"] if r["status"] == "fail"]
+                incomplete = [{"id": r["id"], "kind": r["kind"], "detail": r["detail"]} for r in rep["results"]
+                              if r["status"] == "incomplete" or r.get("coverage_incomplete")]
             else:
                 pairs, skipped = checks.pair_report(items, near, None, cache, deadline)
                 fails = []
+                incomplete = []
             inter = [x for x in pairs if x["kind"] == "interference" and not x.get("allowed_by")]
             for x in pairs:
                 key = (x["a"], x["b"])
@@ -329,12 +332,12 @@ class Worker:
                                      "min_distance_mm": x["distance_mm"], "max_overlap_mm3": x["overlap_mm3"], "at": v, "kind": x["kind"],
                                      "allowed_by": x.get("allowed_by")}
             poses.append({"value": v, "interferences": len(inter), "worst": inter[0] if inter else (pairs[0] if pairs else None),
-                          "rule_failures": fails, "errors": errors, "skipped_pairs": skipped})
+                          "rule_failures": fails, "incomplete_rules": incomplete, "errors": errors, "skipped_pairs": skipped})
         worst_pairs = sorted(pair_min.values(), key=lambda r: r["score"])[:40]
         for r in worst_pairs:
             r.pop("score", None)
         bad = [x["value"] for x in poses if x["interferences"] or x["rule_failures"] or x["errors"]]
-        partial = [x["value"] for x in poses if x["skipped_pairs"]]
+        partial = [x["value"] for x in poses if x["skipped_pairs"] or x["incomplete_rules"]]
         return {"param": name, "scripts": scripts, "values": values, "poses_checked": len(poses), "poses": poses,
                 "closest_pairs": worst_pairs, "failing_poses": bad, "incomplete_poses": partial, "near_mm": near,
                 "requested": {"first": values[0], "last": values[-1], "count": len(values)},
