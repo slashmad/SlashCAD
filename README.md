@@ -14,8 +14,8 @@
   <a href="https://github.com/slashmad/slashcad/issues">Report a problem</a>
 </p>
 
-![Verify and package](https://github.com/slashmad/slashcad/actions/workflows/ci.yml/badge.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Verify and package](https://img.shields.io/github/actions/workflow/status/slashmad/slashcad/ci.yml?style=flat-square)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)
 
 SlashCAD is a desktop app (Linux, Windows; macOS builds via CI) that puts a live CAD view between
 you and an AI agent. You describe a part in plain language ("a 120 mm mounting bracket with four
@@ -364,6 +364,6 @@ are not bundled and are subject to their own terms.
 
 If SlashCAD is useful to you, you can support its development:
 
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/slashmad)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-buy%20me%20a%20beer-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/slashmad)
-[![Liberapay](https://img.shields.io/badge/Liberapay-donate-F6C915?logo=liberapay&logoColor=black)](https://liberapay.com/slashmad/)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-EA4AAA?logo=githubsponsors&logoColor=white&style=flat-square)](https://github.com/sponsors/slashmad)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-buy%20me%20a%20beer-FF5E5B?logo=ko-fi&logoColor=white&style=flat-square)](https://ko-fi.com/slashmad)
+[![Liberapay](https://img.shields.io/badge/Liberapay-donate-F6C915?logo=liberapay&logoColor=black&style=flat-square)](https://liberapay.com/slashmad/)
