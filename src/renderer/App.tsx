@@ -321,6 +321,7 @@ export function App() {
           <button className="primary" onClick={() => setShowNew(true)}>{tr("app.newProject")}</button>
           <button onClick={() => api.project.openFileDialog()}>{tr("app.openFile")}</button>
           <button onClick={() => api.project.openDialog()}>{tr("app.openFolder")}</button>
+          <button onClick={() => api.project.verifyPcbStep()}>{tr("app.verifyPcbStep")}</button>
         </div>
         <p className="muted small">{tr("app.dropHint")}</p>
         <div>
@@ -350,6 +351,7 @@ export function App() {
             <div className="menu open-menu" onMouseLeave={() => setOpenMenu(false)}>
               <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.openFileDialog(); }}>{tr("app.openFile")}</div>
               <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.openDialog(); }}>{tr("app.openFolder")}</div>
+              <div className="menu-item" onClick={() => { setOpenMenu(false); api.project.verifyPcbStep(); }}>{tr("app.verifyPcbStep")}</div>
               <div className="menu-item" onClick={() => { setOpenMenu(false); setShowNew(true); }}>{tr("app.newProject")}</div>
             </div>
           )}

@@ -21,6 +21,7 @@ Engineering principles and physical lessons:
 - A watertight mesh is not proof of printability: print orientation drastically affects support volume and strength. Use printability before considering a printable part complete.
 - Parametric editing over boolean patches: when modifying parts, edit original parametric sketches and contours instead of boolean-cutting into imported solids, which leaves material shelves.
 - Ask when intent is ambiguous before building complex geometry.
+- For a board STEP with a companion .binding.json, the Open menu's Verify PCB and STEP action checks the source board and STEP hashes. Assess the imported datum, shape and fit separately in the CAD tools.
 
 Tools from the slashcad MCP server:
 - build: rebuild now and get per-source errors (with line numbers), parts and timings. Use it after edits to confirm success.

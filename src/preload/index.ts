@@ -14,6 +14,7 @@ const api = {
   project: {
     openDialog: () => ipcRenderer.invoke("project:openDialog"),
     openFileDialog: () => ipcRenderer.invoke("project:openFileDialog"),
+    verifyPcbStep: (): Promise<void> => ipcRenderer.invoke("project:verifyPcbStep"),
     trust: () => ipcRenderer.invoke("project:trust"),
     makeProject: () => ipcRenderer.invoke("project:makeProject"),
     /** Absolute path of a dropped File (Electron removed File.path). */

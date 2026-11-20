@@ -15,6 +15,7 @@ import { Annotations } from "./annotations";
 import { Builder } from "./builder";
 import { CadWorker } from "./cadWorker";
 import { DesignChecks, findSlicer } from "./checks";
+import { verifyPcbStepBinding } from "./pcbStep";
 import { addRule, addTest, readDesign, readTests, removeRule, removeTest, RULES_FILE, setSweep, TESTS_FILE, updateTest } from "./design";
 import { integrateDesktop } from "./desktopIntegration";
 import { downloadReference } from "./download";
@@ -513,6 +514,40 @@ function registerIpc(): void {
     if (r.canceled || !r.filePaths[0]) return false;
     await openPath(r.filePaths[0]);
     return true;
+  });
+  ipcMain.handle("project:verifyPcbStep", async () => {
+    const sv = getSettings().language === "sv";
+    const title = sv ? "Verifiera PCB och STEP" : "Verify PCB and STEP";
+    const pickStep = await dialog.showOpenDialog(win!, {
+      title: sv ? "Välj exporterad STEP" : "Select the exported STEP",
+      properties: ["openFile"], filters: [{ name: "STEP", extensions: ["step", "stp"] }],
+    });
+    const step = pickStep.filePaths[0];
+    if (pickStep.canceled || !step) return;
+    if (!existsSync(`${step}.binding.json`)) {
+      await dialog.showMessageBox(win!, { type: "warning", title,
+        message: sv ? "Exportposten saknas." : "The export record is missing.",
+        detail: sv ? "Lägg STEP-filen bredvid dess .binding.json från exporten." : "Keep the STEP file next to its exported .binding.json." });
+      return;
+    }
+    const pickPcb = await dialog.showOpenDialog(win!, {
+      title: sv ? "Välj ursprunglig KiCad-kortfil" : "Select the source KiCad board",
+      properties: ["openFile"], filters: [{ name: "KiCad PCB", extensions: ["kicad_pcb"] }],
+    });
+    const pcb = pickPcb.filePaths[0];
+    if (pickPcb.canceled || !pcb) return;
+    try {
+      const result = await verifyPcbStepBinding(pcb, step);
+      const ok = result.pcbMatches && result.stepMatches;
+      const mismatch = [!result.pcbMatches && basename(pcb), !result.stepMatches && basename(step)].filter(Boolean).join("\n");
+      await dialog.showMessageBox(win!, { title, type: ok ? "info" : "warning",
+        message: ok ? (sv ? "Båda filerna matchar exportposten." : "Both files match the export record.")
+          : (sv ? "Filerna matchar inte exportposten." : "The files do not match the export record."),
+        detail: ok ? (sv ? "Filernas SHA-256 matchar. Kontrollera geometri och passning separat." : "Both SHA-256 hashes match. Check geometry and fit separately.") : mismatch });
+    } catch (error) {
+      await dialog.showMessageBox(win!, { type: "warning", title,
+        message: sv ? "Kunde inte verifiera filerna." : "Could not verify the files.", detail: error instanceof Error ? error.message : String(error) });
+    }
   });
   ipcMain.handle("project:makeProject", () => makeProjectFromFile());
   ipcMain.handle("project:trust", async () => {

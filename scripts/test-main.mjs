@@ -3,6 +3,7 @@
 // trust itself. Run from the repository root:  node scripts/test-main.mjs
 import { createRequire } from "node:module";
 import { EventEmitter } from "node:events";
+import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -19,7 +20,7 @@ const check = (name, ok, detail = "") => {
 
 try {
   await build({
-    stdin: { contents: "export * from './src/main/design'; export * from './src/main/checks'; export * from './src/main/agents/billing'; export * from './src/main/project'; export * from './src/main/newProject';", resolveDir: repo, loader: "ts" },
+    stdin: { contents: "export * from './src/main/design'; export * from './src/main/checks'; export * from './src/main/agents/billing'; export * from './src/main/project'; export * from './src/main/newProject'; export * from './src/main/pcbStep';", resolveDir: repo, loader: "ts" },
     outfile: join(scratch, "m.cjs"), bundle: true, platform: "node", format: "cjs", logLevel: "error",
     plugins: [{ name: "mock-electron", setup(b) {
       b.onResolve({ filter: /^electron$/ }, () => ({ path: "electron", namespace: "mock" }));
@@ -74,6 +75,26 @@ try {
   try { await checks.runSweep(motion); } catch (error) { sweepError = error; }
   check("a rules read error stops the sweep before reaching the worker", !!sweepError && attemptedSweeps.length === 2);
   rmSync(rules, { recursive: true });
+
+  const pcbPath = join(scratch, "board.kicad_pcb"), stepPath = join(scratch, "board.step");
+  const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  writeFileSync(pcbPath, "native board");
+  writeFileSync(stepPath, "STEP export");
+  const binding = `${stepPath}.binding.json`;
+  writeFileSync(binding, JSON.stringify({ format: "pcb-step-binding/1", pcb_source_sha256: sha("native board"), pcb_step_sha256: sha("STEP export") }));
+  let match = await m.verifyPcbStepBinding(pcbPath, stepPath);
+  check("PCB and STEP match the export record", match.pcbMatches && match.stepMatches);
+  writeFileSync(pcbPath, "another board");
+  match = await m.verifyPcbStepBinding(pcbPath, stepPath);
+  check("PCB provenance mismatch is independent of STEP identity", !match.pcbMatches && match.stepMatches);
+  writeFileSync(pcbPath, "native board");
+  writeFileSync(stepPath, "another STEP");
+  match = await m.verifyPcbStepBinding(pcbPath, stepPath);
+  check("changed STEP is rejected for the same native board", match.pcbMatches && !match.stepMatches);
+  writeFileSync(binding, JSON.stringify({ format: "unknown" }));
+  let invalid;
+  try { await m.verifyPcbStepBinding(pcbPath, stepPath); } catch (error) { invalid = error; }
+  check("unknown binding format is rejected", !!invalid);
 
   // ---- S02: only a subscription login may start an agent
   const v = (kind, s) => m.subscriptionVerdict(kind, s).ok;
