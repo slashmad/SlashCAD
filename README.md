@@ -15,6 +15,7 @@
 </p>
 
 ![Verify and package](https://img.shields.io/github/actions/workflow/status/slashmad/slashcad/ci.yml?style=flat-square)
+[![Latest release](https://img.shields.io/github/v/release/slashmad/SlashCAD?style=flat-square&label=latest%20release)](https://github.com/slashmad/SlashCAD/releases/latest)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 
 SlashCAD is a desktop app (Linux, Windows; macOS builds via CI) that puts a live CAD view between
