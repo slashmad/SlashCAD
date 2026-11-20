@@ -1,10 +1,10 @@
 {
   "name": "slashcad",
   "productName": "SlashCAD",
-  "version": "0.6.1",
+  "version": "1.0.0",
   "description": "Local CAD workbench where AI agents (Claude, Codex) build build123d models while you watch and steer.",
   "author": "slashmad",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {

@@ -59,7 +59,7 @@ const pyDists = py ? JSON.parse(execFileSync(py, ["-B", "-I", "-c", code], { enc
 const lines = [
   "# Third-party notices",
   "",
-  `SlashCAD ${pkg.version} is MIT-licensed (see LICENSE). Its installers and archives also contain the`,
+  `SlashCAD ${pkg.version} is licensed under GPLv3 (see LICENSE). Its installers and archives also contain the`,
   "third-party software below, each under its own licence. Full licence texts are shipped with each component:",
   "Python packages in `resources/python/…/site-packages/<name>-<version>.dist-info/`, CPython in",
   "`resources/python/lib/python3.13/LICENSE.txt` (Windows: `resources/python/LICENSE.txt`), Electron and Chromium in",

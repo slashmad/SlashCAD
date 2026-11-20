@@ -15,7 +15,7 @@
 </p>
 
 ![Verify and package](https://img.shields.io/github/actions/workflow/status/slashmad/slashcad/ci.yml?style=flat-square)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 
 SlashCAD is a desktop app (Linux, Windows; macOS builds via CI) that puts a live CAD view between
 you and an AI agent. You describe a part in plain language ("a 120 mm mounting bracket with four
@@ -33,7 +33,7 @@ the agents' own traffic to their providers.
 *The example box in `examples/slide-box`. Left: the project's design rules, all passing. Centre:
 the lid is previewed half open (`SLIDE = 45`) without changing the file. Right: the agent chat.*
 
-> **Status:** early development (0.6.1). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
+> **Status:** early development (1.0.0). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
 > Code. ChatGPT (Codex) runs real turns in the app. Its approval of SlashCAD's CAD tools was fixed in
 > 0.4 and has not yet been checked in a live session. The design checks of 0.5 are tested in the app
 > and through the MCP tools, but not yet in a real agent session. The Windows installer works; the portable exe
@@ -353,7 +353,8 @@ uses. `npm run notices` regenerates `THIRD-PARTY-NOTICES.md` after dependency ch
 
 ## License
 
-MIT, see [LICENSE](LICENSE). You are free to use, change and redistribute it, also commercially.
+SlashCAD is licensed under the [GNU General Public License, version 3](LICENSE).
+The [SlashAPP workbench template notice](licenses/SlashAPP-MIT.txt) is included in the packages.
 
 The packages bundle third-party software under its own licences: Electron/Chromium, CPython,
 build123d, Open CASCADE Technology (LGPL-2.1 with the Open CASCADE exception), NumPy, SciPy and
