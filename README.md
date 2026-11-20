@@ -33,7 +33,7 @@ the agents' own traffic to their providers.
 *The example box in `examples/slide-box`. Left: the project's design rules, all passing. Centre:
 the lid is previewed half open (`SLIDE = 45`) without changing the file. Right: the agent chat.*
 
-> **Status:** early development (1.0.0). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
+> **Status:** early development (1.1.0). Daily use on Linux (Fedora, GNOME, Wayland) with Claude
 > Code. ChatGPT (Codex) runs real turns in the app. Its approval of SlashCAD's CAD tools was fixed in
 > 0.4 and has not yet been checked in a live session. The design checks of 0.5 are tested in the app
 > and through the MCP tools, but not yet in a real agent session. The Windows installer works; the portable exe
@@ -52,7 +52,9 @@ the lid is previewed half open (`SLIDE = 45`) without changing the file. Right: 
   ("make this hole Ø4", "round these edges 2 mm"). The agent receives the exact geometry (face type,
   diameter, axis, normal), works through the list and resolves each marker with a note.
 - **Working with existing models.** Open STEP files (also single files, without a project), measure
-  them, and let the agent design new parts that fit them.
+  them, and let the agent design new parts that fit them. Use **Open › Verify PCB and STEP**
+  to compare a SlashPCB STEP export and its original KiCad board with the accompanying
+  `.binding.json`. Check the imported geometry and fit in the CAD view.
 
 ## How it works
 
@@ -210,7 +212,7 @@ The **Checks** tab has four parts. Agents use the same checks through their tool
   the parts. Agents can propose rules; you confirm each one.
 - **Motion.** Pick a parameter that moves parts (for example `SLIDE = 0  # mm`) and a range.
   SlashCAD rebuilds the model at every step in memory, without changing the file, and reports the
-  poses with interference or failed rules and the closest pairs. Only the listed poses are checked,
+  poses with interference, failed rules or incomplete checks, and the closest pairs. Only the listed poses are checked,
   not the motion between them. The *free path* and *retained* rules do check the whole travel: they
   intersect the volume the part sweeps through, so even a thin edge cannot be skipped, and find the
   first contact by bisection. Click a pose to see it in the view;
